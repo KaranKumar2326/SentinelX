@@ -1,0 +1,100 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Severity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum Status {
+  OPEN
+  ACKNOWLEDGED
+  INVESTIGATING
+  RESOLVED
+  CLOSED
+}
+
+enum IncidentType {
+  DQ_FAILURE
+  MISSING_OWNER
+  STALE_DATA
+  LINEAGE_BREAK
+}
+
+model User {
+  id        String     @id @default(uuid())
+  email     String     @unique
+  password  String
+  name      String?
+  omUrl     String?    // User's OpenMetadata instance URL
+  omToken   String?    // User's OpenMetadata API token
+  omConnected Boolean  @default(false)
+  airflowUrl  String?
+  airflowUser String?
+  airflowPass String?
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  incidents Incident[]
+}
+
+model Incident {
+  id             String       @id @default(uuid())
+  type           IncidentType
+  severity       Severity
+  status         Status       @default(OPEN)
+  entityId       String
+  entityName     String
+  entityType     String
+  description    String
+  owner          String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  resolvedAt     DateTime?
+  acknowledgedAt DateTime?
+  rootCause      String?
+  parentId       String?
+  logs           IncidentLog[]
+  userId         String?
+  user           User?        @relation(fields: [userId], references: [id])
+
+  @@index([parentId])
+  @@index([userId])
+}
+
+model IncidentLog {
+  id         String   @id @default(uuid())
+  incidentId String
+  message    String
+  timestamp  DateTime @default(now())
+  incident   Incident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+}
+
+model TableMetadata {
+  id            String   @id @default(uuid())
+  fqn           String   @unique
+  name          String
+  owner         String?
+  lastUpdate    DateTime @default(now())
+  healthScore   Float    @default(100)
+  dqTestsTotal  Int      @default(0)
+  dqTestsFailed Int      @default(0)
+  lineageNodes  Int      @default(0)
+  updatedAt     DateTime @updatedAt
+}
+
+model HealthHistory {
+  id        String   @id @default(uuid())
+  fqn       String
+  score     Float
+  timestamp DateTime @default(now())
+
+  @@index([fqn])
+}

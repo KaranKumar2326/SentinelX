@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Bell, Shield, Database, CheckCircle, XCircle, Loader } from 'lucide-react';
+import { Bell, Shield, Database, CheckCircle, XCircle, Loader, Zap } from 'lucide-react';
 import { apiClient } from '../api/client';
 import { useAuth } from '../hooks/useAuth';
 import toast from 'react-hot-toast';

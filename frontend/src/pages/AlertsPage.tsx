@@ -51,13 +51,12 @@ const AlertsPage = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">Alert Dispatch Log</h1>
-          <p className="text-sm text-slate-500 mt-1">Monitor all outgoing notifications and webhook deliveries.</p>
+          <h1 className="text-4xl heading-serif text-slate-900">Alert Dispatch Log</h1>
+          <p className="text-sm text-slate-500 mt-1">Audit trail for all automated outgoing notifications.</p>
         </div>
         <button
           onClick={() => toast.success('Webhook system fully active.')}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white"
-          style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', boxShadow: '0 4px 12px rgba(99,102,241,0.3)' }}>
+          className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 shadow-md transition-all">
           <Plus size={16} /> Add Webhook
         </button>
       </div>

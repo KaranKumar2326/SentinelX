@@ -25,8 +25,8 @@ const DashboardLayout: React.FC<LayoutProps> = ({ children }) => {
         <div className="p-6 pb-4">
           <div className="flex items-center gap-3 mb-8">
             <div className="relative w-10 h-10 rounded-xl flex items-center justify-center" style={{
-              background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
-              boxShadow: '0 4px 12px rgba(99,102,241,0.35)'
+              background: 'linear-gradient(135deg, #0369a1, #075985)',
+              boxShadow: '0 4px 12px rgba(3,105,161,0.25)'
             }}>
               <Zap className="w-5 h-5 text-white" />
             </div>
@@ -47,7 +47,7 @@ const DashboardLayout: React.FC<LayoutProps> = ({ children }) => {
         <div className="mt-auto p-4" style={{ borderTop: '1px solid var(--border-color)' }}>
           <div className="flex items-center gap-3 mb-3">
             <div className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0"
-              style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}>
+              style={{ background: 'linear-gradient(135deg, #0369a1, #075985)' }}>
               {(user?.name || user?.email || 'U').charAt(0).toUpperCase()}
             </div>
             <div className="overflow-hidden">
@@ -67,11 +67,10 @@ const DashboardLayout: React.FC<LayoutProps> = ({ children }) => {
         {/* Topbar */}
         <header className="h-16 flex items-center justify-between px-8 flex-shrink-0" style={{
           background: 'rgba(255,255,255,0.85)',
-          backdropFilter: 'blur(12px)',
+          backdropFilter: 'blur(16px)',
           borderBottom: '1px solid var(--border-color)',
-          boxShadow: '0 1px 8px rgba(0,0,0,0.04)'
         }}>
-          <h1 className="text-base font-bold" style={{ color: 'var(--text-primary)' }}>Metadata Incident Response</h1>
+          <h1 className="text-2xl heading-serif" style={{ color: 'var(--text-primary)' }}>Sentinel<span className="text-blue-600">X</span></h1>
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-semibold"
               style={{ background: '#f0fdf4', color: '#16a34a', border: '1px solid #bbf7d0' }}>
@@ -98,9 +97,9 @@ const NavItem = ({ icon, label, to }: { icon: ReactNode; label: string; to: stri
       display: 'flex', alignItems: 'center', gap: '10px',
       padding: '10px 12px', borderRadius: '10px', textDecoration: 'none',
       fontSize: '0.875rem', fontWeight: active ? 600 : 500, transition: 'all 0.15s ease',
-      background: active ? 'linear-gradient(135deg, #eef2ff, #ede9fe)' : 'transparent',
-      color: active ? '#6366f1' : '#64748b',
-      boxShadow: active ? '0 2px 8px rgba(99,102,241,0.12)' : 'none',
+      background: active ? '#f0f9ff' : 'transparent',
+      color: active ? 'var(--accent-primary)' : '#64748b',
+      boxShadow: active ? '0 2px 8px rgba(3,105,161,0.08)' : 'none',
     }}>
       {icon}
       <span>{label}</span>

@@ -11,10 +11,19 @@ export class InsightService {
     const incident = await prisma.incident.findUnique({ where: { id: incidentId } });
     if (!incident) return null;
 
-    const lineage = await omService.getLineage(incident.entityId);
-    const tables = await omService.getTables();
+    console.time(`[INSIGHTS] impact:${incidentId}`);
+    const [lineage, tables] = await Promise.all([
+      omService.getLineage(incident.entityId),
+      omService.getTables()
+    ]);
+    console.timeEnd(`[INSIGHTS] impact:${incidentId}`);
     
-    const edges = lineage?.edges || [];
+    if (!lineage || !lineage.nodes) {
+      console.log(`[INSIGHTS] No lineage found for ${incident.entityName}. Impact minimized.`);
+      return { affectedAssets: 0, queryImpact24h: 0, estimatedUsers: 0, severityScore: 'LOW' };
+    }
+    
+    const edges = lineage.edges || [];
     const downstreamIds = edges
       .filter((e: any) => e.fromEntity === incident.entityId || e.fromEntity === '1') 
       .map((e: any) => e.toEntity);

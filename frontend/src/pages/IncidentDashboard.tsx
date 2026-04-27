@@ -48,6 +48,8 @@ const statusStyles: Record<string, string> = {
 const IncidentDashboard = () => {
   const queryClient = useQueryClient();
   const [filterStatus, setFilterStatus] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const PAGE_SIZE = 8;
 
   const { data: incidents, isLoading } = useQuery({
     queryKey: ['incidents', filterStatus],
@@ -114,49 +116,61 @@ const IncidentDashboard = () => {
 
   return (
     <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-4xl heading-serif text-slate-900">Incident Command Center</h1>
+          <p className="text-sm text-slate-500 mt-1">Autonomous metadata failure detection and real-time response triage.</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => simulateMutation.mutate()}
+            className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 shadow-md transition-all active:scale-95"
+          >
+            <Play size={14} fill="currentColor" /> Simulate Failure
+          </button>
+        </div>
+      </div>
+
       {/* KPI Row */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-        <KPICard title="Total Incidents" value={metrics?.totalIncidents ?? 0} icon={<AlertTriangle size={20} />} iconColor="#6366f1" />
+        <KPICard title="Total Incidents" value={metrics?.totalIncidents ?? 0} icon={<AlertTriangle size={20} />} iconColor="#0369a1" />
         <KPICard title="Active Alerts"   value={(metrics?.totalIncidents ?? 0) - (metrics?.resolvedIncidents ?? 0)}  icon={<Clock size={20} />}          iconColor="#f59e0b" accent />
         <KPICard title="Critical"        value={metrics?.criticalIncidents ?? 0} icon={<AlertTriangle size={20} />} iconColor="#e11d48" />
         <KPICard title="MTTR"           value={metrics?.mttr ?? '0h'}  icon={<CheckCircle size={20} />}     iconColor="#10b981" />
-        <KPICard title="MTTA (min)"      value={metrics?.mtta ?? 0}  icon={<TrendingUp size={20} />}      iconColor="#6366f1" />
+        <KPICard title="MTTA (min)"      value={metrics?.mtta ?? 0}  icon={<TrendingUp size={20} />}      iconColor="#0369a1" />
       </div>
 
       {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="lg:col-span-2 glass-card p-6">
           <div className="flex items-center gap-2 mb-4">
-            <TrendingUp size={18} className="text-indigo-500" />
-            <h3 className="text-sm font-semibold text-slate-700">Incident Volume — Last 7 Days</h3>
+            <TrendingUp size={18} className="text-blue-500" />
+            <h3 className="text-xs font-black uppercase tracking-widest text-slate-400">Incident Volume — Last 7 Days</h3>
           </div>
           <div className="h-48">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={trends || []}>
                 <defs>
                   <linearGradient id="lineGrad" x1="0" y1="0" x2="1" y2="0">
-                    <stop offset="0%" stopColor="#6366f1" />
-                    <stop offset="100%" stopColor="#8b5cf6" />
+                    <stop offset="0%" stopColor="#0369a1" />
+                    <stop offset="100%" stopColor="#0ea5e9" />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
                 <XAxis dataKey="date" stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} />
                 <YAxis stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} allowDecimals={false} />
-                <Tooltip contentStyle={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '10px', boxShadow: '0 4px 16px rgba(0,0,0,0.08)', color: '#0f172a' }} itemStyle={{ color: '#6366f1' }} />
-                <Line type="monotone" dataKey="total" stroke="url(#lineGrad)" strokeWidth={3} dot={{ r: 4, fill: '#6366f1', strokeWidth: 2, stroke: '#fff' }} activeDot={{ r: 6 }} />
+                <Tooltip contentStyle={{ background: '#fff', border: '1px solid #e8e8ee', borderRadius: '12px', boxShadow: '0 8px 32px rgba(0,0,0,0.08)', color: '#0d0d12' }} itemStyle={{ color: '#0369a1' }} />
+                <Line type="monotone" dataKey="total" stroke="url(#lineGrad)" strokeWidth={3} dot={{ r: 4, fill: '#0369a1', strokeWidth: 2, stroke: '#fff' }} activeDot={{ r: 6 }} />
               </LineChart>
             </ResponsiveContainer>
           </div>
         </div>
 
         <div className="glass-card p-6 flex flex-col items-center justify-center text-center gap-2">
-          <div className="text-6xl font-black" style={{
-            background: 'linear-gradient(135deg, #10b981, #059669)',
-            WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent'
-          }}>92%</div>
-          <div className="text-xs font-bold uppercase tracking-widest text-slate-500">Global Platform Health</div>
-          <div className="w-full h-2 rounded-full bg-slate-100 mt-2 overflow-hidden">
-            <div className="h-full rounded-full bg-emerald-400" style={{ width: '92%' }} />
+          <div className="text-6xl heading-serif" style={{ color: '#10b981' }}>92%</div>
+          <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Global Platform Health</div>
+          <div className="w-full h-1.5 rounded-full bg-slate-100 mt-2 overflow-hidden">
+            <div className="h-full rounded-full bg-emerald-500" style={{ width: '92%' }} />
           </div>
         </div>
       </div>
@@ -198,65 +212,88 @@ const IncidentDashboard = () => {
       </div>
 
       {/* Incident Table */}
-      <div className="glass-card overflow-hidden">
-        <table className="w-full text-left border-collapse">
-          <thead>
-            <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-              {['Severity', 'Status', 'Entity', 'Description', 'SLA / Detection', 'Action'].map(h => (
-                <th key={h} className="px-5 py-3.5 text-xs font-bold uppercase tracking-wider text-slate-500">{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {incidents?.map((incident: any, i: number) => {
-              const sev = severityStyles[incident.severity] || severityStyles.LOW;
-              return (
-                <tr key={incident.id}
-                  style={{ borderBottom: i < incidents.length - 1 ? '1px solid #f1f5f9' : 'none' }}
-                  className="hover:bg-slate-50 transition-colors">
-                  <td className="px-5 py-4">
-                    <span className="status-badge" style={{ background: sev.bg, color: sev.text, border: `1px solid ${sev.border}` }}>
-                      {incident.severity}
-                    </span>
-                  </td>
-                  <td className={`px-5 py-4 text-sm ${statusStyles[incident.status] || ''}`}>{incident.status}</td>
-                  <td className="px-5 py-4 text-sm font-semibold text-slate-800">{incident.entityName}</td>
-                  <td className="px-5 py-4 text-sm text-slate-500 max-w-xs truncate">{incident.description}</td>
-                  <td className="px-5 py-4">
-                    <div className="flex flex-col gap-1">
-                       <LiveTimer createdAt={incident.createdAt} status={incident.status} />
-                       <span className="text-[10px] text-slate-400 pl-2">Detected: {new Date(incident.createdAt).toLocaleTimeString()}</span>
-                    </div>
-                  </td>
-                  <td className="px-5 py-4">
-                    <Link to={`/incidents/${incident.id}`}
-                      className="text-sm font-semibold px-3 py-1.5 rounded-lg transition-colors"
-                      style={{ background: '#eef2ff', color: '#6366f1' }}>
-                      View RCA →
-                    </Link>
-                  </td>
-                </tr>
-              );
-            })}
-            {(!incidents || incidents.length === 0) && (
-              <tr><td colSpan={6} className="px-5 py-12 text-center text-slate-400 text-sm">No incidents found. Click "Simulate Failure" to generate demo data.</td></tr>
-            )}
-          </tbody>
-        </table>
+      <div className="glass-card overflow-hidden flex flex-col">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse min-w-[1000px]">
+            <thead>
+              <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e8e8ee' }}>
+                {['Severity', 'Status', 'Entity', 'Description', 'SLA / Detection', 'Action'].map(h => (
+                  <th key={h} className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {incidents?.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE).map((incident: any, i: number) => {
+                const sev = severityStyles[incident.severity] || severityStyles.LOW;
+                return (
+                  <tr key={incident.id}
+                    style={{ borderBottom: i < Math.min(incidents?.length || 0, PAGE_SIZE) - 1 ? '1px solid #f8f8fa' : 'none' }}
+                    className="hover:bg-slate-50 transition-colors">
+                    <td className="px-6 py-5 text-sm">
+                      <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider" style={{ background: sev.bg, color: sev.text, border: `1px solid ${sev.border}` }}>
+                        {incident.severity}
+                      </span>
+                    </td>
+                    <td className={`px-6 py-5 text-sm font-bold ${statusStyles[incident.status] || ''}`}>{incident.status}</td>
+                    <td className="px-6 py-5 text-sm font-bold text-slate-900">{incident.entityName}</td>
+                    <td className="px-6 py-5 text-sm text-slate-500 max-w-[280px]">
+                       <div className="truncate font-medium">{incident.description}</div>
+                    </td>
+                    <td className="px-6 py-5">
+                      <div className="flex flex-col gap-1">
+                         <LiveTimer createdAt={incident.createdAt} status={incident.status} />
+                         <span className="text-[10px] text-slate-400">Captured: {new Date(incident.createdAt).toLocaleTimeString()}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-5">
+                      <Link to={`/incidents/${incident.id}`}
+                        className="inline-flex whitespace-nowrap text-[11px] font-black uppercase tracking-widest px-4 py-2 rounded border border-blue-100 bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors">
+                        Perform RCA →
+                      </Link>
+                    </td>
+                  </tr>
+                );
+              })}
+              {(!incidents || incidents.length === 0) && (
+                <tr><td colSpan={6} className="px-6 py-16 text-center text-slate-400 text-sm italic font-medium">No active incidents detected. Pipeline health at 100%.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+        
+        {/* Simple Pagination Footer */}
+        {incidents && incidents.length > 0 && (
+          <div className="px-6 py-4 bg-[#fafafe] border-t border-[#e8e8ee] flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+              Showing {(currentPage - 1) * PAGE_SIZE + 1} to {Math.min(currentPage * PAGE_SIZE, incidents.length)} of {incidents.length} logs
+            </span>
+            <div className="flex gap-1">
+               <button 
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="px-3 py-1 rounded bg-white border border-slate-200 text-slate-400 text-[10px] font-black hover:bg-slate-50 disabled:opacity-50 transition-colors">PREV</button>
+               <button className="px-3 py-1 rounded bg-blue-600 text-white text-[10px] font-black">{currentPage}</button>
+               <button 
+                onClick={() => setCurrentPage(p => p + 1)}
+                disabled={currentPage * PAGE_SIZE >= incidents.length}
+                className="px-3 py-1 rounded bg-white border border-slate-200 text-slate-400 text-[10px] font-black hover:bg-slate-50 disabled:opacity-50 transition-colors">NEXT</button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
 };
 
-const KPICard = ({ title, value, icon, iconColor, accent }: { title: string; value: number; icon: React.ReactNode; iconColor: string; accent?: boolean }) => (
-  <div className="glass-card p-5 flex items-center gap-4">
-    <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
-      style={{ background: `${iconColor}18`, color: iconColor }}>
+const KPICard = ({ title, value, icon, iconColor, accent }: { title: string; value: string | number; icon: React.ReactNode; iconColor: string; accent?: boolean }) => (
+  <div className="glass-card p-5 flex items-center gap-5">
+    <div className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0"
+      style={{ background: `${iconColor}12`, color: iconColor, border: `1px solid ${iconColor}20` }}>
       {icon}
     </div>
     <div>
-      <p className="text-xs text-slate-500 font-medium mb-0.5">{title}</p>
-      <p className="text-2xl font-black" style={{ color: accent ? iconColor : '#0f172a' }}>{value}</p>
+      <p className="text-[10px] text-slate-400 font-black uppercase tracking-[0.1em] mb-1">{title}</p>
+      <p className="text-3xl heading-serif" style={{ color: accent ? iconColor : '#0d0d12' }}>{value}</p>
     </div>
   </div>
 );

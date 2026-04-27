@@ -220,28 +220,30 @@ export const getIncidentLineage = asyncHandler(async (req: Request, res: Respons
   downstreamMap.delete(sourceEntityId);
   upstreamMap.delete(sourceEntityId);
 
-  const impactedFqns = new Set(downstreamMap.keys());
-  const upstreamFqns = new Set(upstreamMap.keys());
-
-  // Collect all relevant FQNs to know which raw nodes to include
-  const relevantFqns = new Set<string>([
+  // Collect all relevant FQNs and IDs to know which raw nodes to include
+  // We use both to ensure that if a node was found via ID or FQN, we catch it
+  const relevantIdentifiers = new Set<string>([
     sourceEntityId,
-    ...impactedFqns,
-    ...upstreamFqns,
+    ...downstreamMap.keys(),
+    ...upstreamMap.keys(),
   ]);
+
+  console.log(`[LINEAGE] Found ${relevantIdentifiers.size} relevant nodes for incident on ${sourceEntityId}`);
 
   // ── 4. Build React-Flow nodes ─────────────────────────────────────────────
   const rfNodes: LineageNode[] = rawLineage.nodes
-    .filter((n: any) => relevantFqns.has(n.fullyQualifiedName))
+    .filter((n: any) => relevantIdentifiers.has(n.fullyQualifiedName) || relevantIdentifiers.has(n.id))
     .map((n: any) => {
       const fqn: string = n.fullyQualifiedName;
-      const isSource = fqn === sourceEntityId;
-      const isImpacted = impactedFqns.has(fqn);
-      const isUpstream = upstreamFqns.has(fqn);
+      const id: string = n.id;
+      
+      const isSource = fqn === sourceEntityId || id === sourceEntityId;
+      const isImpacted = (downstreamMap.has(fqn) || downstreamMap.has(id)) && !isSource;
+      const isUpstream = (upstreamMap.has(fqn) || upstreamMap.has(id)) && !isSource;
 
       let depth = 0;
-      if (isImpacted) depth = downstreamMap.get(fqn) ?? 0;
-      else if (isUpstream) depth = -(upstreamMap.get(fqn) ?? 0);
+      if (isImpacted) depth = downstreamMap.get(fqn) ?? downstreamMap.get(id) ?? 0;
+      else if (isUpstream) depth = -(upstreamMap.get(fqn) ?? upstreamMap.get(id) ?? 0);
 
       return {
         id: n.id,
@@ -268,7 +270,7 @@ export const getIncidentLineage = asyncHandler(async (req: Request, res: Respons
   const rfEdges: LineageEdge[] = rawEdges
     .filter((e: any) => {
       // Only include edges where both endpoints are in the relevant set
-      return relevantFqns.has(e.fromEntity) && relevantFqns.has(e.toEntity);
+      return relevantIdentifiers.has(e.fromEntity) && relevantIdentifiers.has(e.toEntity);
     })
     .map((e: any, idx: number) => {
       const sourceId = fqnToId.get(e.fromEntity) ?? e.fromEntity;
@@ -278,7 +280,7 @@ export const getIncidentLineage = asyncHandler(async (req: Request, res: Respons
       //   the source end is the incident entity OR a downstream-impacted node
       const fromFqn: string = e.fromEntity;
       const isHot =
-        fromFqn === sourceEntityId || impactedFqns.has(fromFqn);
+        fromFqn === sourceEntityId || downstreamMap.has(fromFqn);
 
       return {
         id: `e-${idx}-${sourceId}-${targetId}`,
@@ -286,7 +288,7 @@ export const getIncidentLineage = asyncHandler(async (req: Request, res: Respons
         target: targetId,
         animated: isHot,
         style: {
-          stroke: isHot ? '#EF4444' : upstreamFqns.has(fromFqn) ? '#F59E0B' : '#6366F1',
+          stroke: isHot ? '#EF4444' : upstreamMap.has(fromFqn) ? '#F59E0B' : '#6366F1',
           strokeWidth: isHot ? 2 : 1,
         },
         label: e.description ?? undefined,
@@ -303,8 +305,8 @@ export const getIncidentLineage = asyncHandler(async (req: Request, res: Respons
     edges: rfEdges,
     stats: {
       totalNodes: rfNodes.length,
-      impactedNodes: impactedFqns.size,
-      upstreamNodes: upstreamFqns.size,
+      impactedNodes: downstreamMap.size,
+      upstreamNodes: upstreamMap.size,
       maxDepth: downstreamDepths.length ? Math.max(...downstreamDepths) : 0,
       maxUpstreamDepth: upstreamDepths.length ? Math.max(...upstreamDepths) : 0,
     },

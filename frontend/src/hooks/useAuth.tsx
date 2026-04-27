@@ -1,5 +1,4 @@
-import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
-import { apiClient } from '../api/client';
+import { useUser, useAuth as useClerkAuth, useClerk } from "@clerk/clerk-react";
 
 interface User {
   id: string;
@@ -8,63 +7,29 @@ interface User {
   omConnected: boolean;
 }
 
-interface AuthContextType {
-  user: User | null;
-  token: string | null;
-  login: (token: string, user: User) => void;
-  logout: () => void;
-  isLoading: boolean;
-}
+export const useAuth = () => {
+  const { user: clerkUser, isLoaded: isUserLoaded } = useUser();
+  const { getToken, signOut } = useClerkAuth();
+  const { openUserProfile } = useClerk();
 
-const AuthContext = createContext<AuthContextType | null>(null);
+  const user: User | null = clerkUser ? {
+    id: clerkUser.id,
+    email: clerkUser.primaryEmailAddress?.emailAddress || "",
+    name: clerkUser.fullName || clerkUser.username || "User",
+    omConnected: true, // We assume true for now, can be synced later
+  } : null;
 
-export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    const storedToken = localStorage.getItem('sentinelx_token');
-    if (storedToken) {
-      apiClient.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
-      apiClient.get('/auth/me')
-        .then(res => {
-          setUser(res.data);
-          setToken(storedToken);
-        })
-        .catch(() => {
-          localStorage.removeItem('sentinelx_token');
-          delete apiClient.defaults.headers.common['Authorization'];
-        })
-        .finally(() => setIsLoading(false));
-    } else {
-      setIsLoading(false);
-    }
-  }, []);
-
-  const login = (newToken: string, newUser: User) => {
-    localStorage.setItem('sentinelx_token', newToken);
-    apiClient.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
-    setToken(newToken);
-    setUser(newUser);
+  return {
+    user,
+    token: null, // Clerk tokens are fetched via getToken() async
+    login: () => {}, // Handled by Clerk components
+    logout: signOut,
+    isLoading: !isUserLoaded,
+    getToken,
+    openUserProfile
   };
-
-  const logout = () => {
-    localStorage.removeItem('sentinelx_token');
-    delete apiClient.defaults.headers.common['Authorization'];
-    setToken(null);
-    setUser(null);
-  };
-
-  return (
-    <AuthContext.Provider value={{ user, token, login, logout, isLoading }}>
-      {children}
-    </AuthContext.Provider>
-  );
 };
 
-export const useAuth = () => {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error('useAuth must be used inside AuthProvider');
-  return ctx;
+export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
+    return <>{children}</>; // No longer needed as ClerkProvider is in App.tsx
 };

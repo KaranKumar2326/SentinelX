@@ -27,6 +27,7 @@
     "typescript": "^6.0.3"
   },
   "dependencies": {
+    "@clerk/backend": "^3.4.1",
     "@prisma/client": "^5.22.0",
     "@types/bcryptjs": "^2.4.6",
     "@types/jsonwebtoken": "^9.0.10",

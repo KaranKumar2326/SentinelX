@@ -98,4 +98,4 @@ Check out the full walkthrough of SentinelX in action, showing real-time detecti
 ## ⚖️ License
 Distributed under the MIT License. See `LICENSE` for more information.
 
-Developed with ❤️ for the 2024 Data Hackathon.
+Developed with ❤️ for the 2026 OpenMetaData Hackathon.

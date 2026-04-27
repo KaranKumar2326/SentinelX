@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 
 const logos = [
   { n: "OpenMetadata", c: "#0284c7" },
@@ -305,43 +305,7 @@ function HeroDashCard() {
   );
 }
 
-function MetricsStrip() {
-  const { ref, visible } = useReveal();
-  const c1 = useCounter(98400, visible);
-  const c2 = useCounter(340, visible);
-  const c3 = useCounter(99, visible);
-  const c4 = useCounter(2, visible);
 
-  const cells = [
-    { val: c1.toLocaleString(), suffix: "+", label: "Issues resolved autonomously", delta: "↑ 12% this month" },
-    { val: c2, suffix: "ms", label: "Average detection latency", delta: "↓ 40% vs manual" },
-    { val: c3, suffix: "%", label: "Data SLA compliance", delta: "Industry benchmark: 94%" },
-    { val: c4, suffix: "min", label: "Time to connect & onboard", delta: "No code required" },
-  ];
-
-  return (
-    <div ref={ref} style={{
-      borderBottom: "1px solid #e8e8ee", background: "#fff",
-      opacity: visible ? 1 : 0, transform: visible ? "none" : "translateY(20px)",
-      transition: "opacity .6s, transform .6s",
-    }}>
-      <div style={{ maxWidth: 1160, margin: "0 auto", display: "grid", gridTemplateColumns: "repeat(4,1fr)", borderLeft: "1px solid #e8e8ee" }}>
-        {cells.map((c, i) => (
-          <div key={i} style={{ padding: "36px 40px", borderRight: "1px solid #e8e8ee" }}>
-            <span style={{
-              fontFamily: "'Instrument Serif', serif", fontSize: 42, fontWeight: 400,
-              letterSpacing: "-.04em", color: "#0d0d12", display: "block", lineHeight: 1, marginBottom: 6,
-            }}>
-              {c.val}<span style={{ fontSize: 32, color: "#0369a1" }}>{c.suffix}</span>
-            </span>
-            <div style={{ fontSize: 12, color: "#767688", fontWeight: 400, letterSpacing: "-.01em" }}>{c.label}</div>
-            <div style={{ fontSize: 11, color: "#16a34a", marginTop: 3 }}>{c.delta}</div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
 
 function Features() {
   const { ref, visible } = useReveal();
@@ -462,40 +426,7 @@ function Integrations() {
   );
 }
 
-function CTABlock() {
-  const { ref, visible } = useReveal();
-  return (
-    <div style={{ maxWidth: 1160, margin: "0 auto", padding: "0 48px 120px" }}>
-      <div ref={ref} style={{
-        background: "#0d0d12", borderRadius: 24, padding: "80px 72px",
-        display: "grid", gridTemplateColumns: "1fr auto", gap: 48, alignItems: "center",
-        position: "relative", overflow: "hidden",
-        opacity: visible ? 1 : 0, transform: visible ? "none" : "translateY(20px)",
-        transition: "opacity .6s, transform .6s",
-      }}>
-        <div style={{ position: "absolute", top: -60, right: -60, width: 320, height: 320, borderRadius: "50%", background: "radial-gradient(circle,rgba(99,91,255,.18),transparent 70%)" }} />
-        <div>
-          <h2 style={{ fontFamily: "'Instrument Serif', serif", fontSize: "clamp(28px,3vw,44px)", fontWeight: 400, letterSpacing: "-.03em", color: "#fff", lineHeight: 1.1 }}>
-            Your data deserves<br /><em style={{ color: "#c7c3f9", fontStyle: "italic" }}>a guardian.</em>
-          </h2>
-          <p style={{ fontSize: 15, color: "rgba(255,255,255,0.5)", marginTop: 10, fontWeight: 300 }}>Set up in two minutes. No credit card required.</p>
-        </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 10, alignItems: "flex-end", flexShrink: 0 }}>
-          <Link to="/register" style={{
-            padding: "13px 28px", borderRadius: 10, background: "#0369a1", color: "#fff",
-            fontSize: 14, fontWeight: 600, fontFamily: "inherit", border: "none", cursor: "pointer",
-            whiteSpace: "nowrap", display: 'flex', alignItems: 'center'
-          }}>
-            Start free trial
-          </Link>
-          <button style={{ padding: "13px 28px", borderRadius: 10, background: "transparent", color: "rgba(255,255,255,0.7)", fontSize: 14, fontWeight: 400, fontFamily: "inherit", border: "1px solid rgba(255,255,255,0.18)", cursor: "pointer", whiteSpace: "nowrap" }}>
-            Talk to sales →
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
+
 
 export default function SentinelXLanding() {
   return (

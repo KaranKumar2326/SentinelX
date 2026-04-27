@@ -1,4 +1,5 @@
 import nodemailer from 'nodemailer';
+import { prisma } from './prisma';
 import { webhookService } from './webhookService';
 
 class AlertService {
@@ -44,12 +45,26 @@ class AlertService {
   async sendIncidentAlert(incident: any) {
     if (!this.transporter) return;
 
+    // Fetch all registered users to notify them
+    const users = await prisma.user.findMany({ select: { email: true } });
+    const recipients = users.map(u => u.email);
+
+    // Add fallback recipient from ENV if no users exist
+    if (recipients.length === 0 && process.env.ALERT_RECIPIENT) {
+      recipients.push(process.env.ALERT_RECIPIENT);
+    }
+
+    if (recipients.length === 0) {
+      console.warn('[ALERT SKIPPED] No recipients found in database or .env');
+      return;
+    }
+
     const isCritical = incident.severity === 'CRITICAL';
     const previewUrl = `http://localhost:5175/incidents/${incident.id}`;
 
     const mailOptions = {
-      from: '"SentinelX Agent" <alerts@sentinelx.ai>',
-      to: 'oncall@datateam.com',
+      from: process.env.SMTP_FROM || 'SentinelX <onboarding@resend.dev>',
+      to: recipients.join(', '),
       subject: `[${incident.severity}] ${incident.entityName}: ${incident.type} detected`,
       html: `
         <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; background: #fff;">
@@ -95,21 +110,50 @@ class AlertService {
     };
 
     try {
-      const info = await this.transporter.sendMail(mailOptions);
-      const etherealUrl = nodemailer.getTestMessageUrl(info);
-      console.log(`[ALERT SENT] Email alert sent for incident ${incident.id}. Preview URL: ${etherealUrl}`);
+      // Send individual emails to each recipient
+      // This ensures that if one email is rejected (e.g. unverified in Resend trial), 
+      // the others still get delivered.
+      for (const email of recipients) {
+        const individualMailOptions = { ...mailOptions, to: email };
+        try {
+          const info = await this.transporter.sendMail(individualMailOptions);
+          const etherealUrl = nodemailer.getTestMessageUrl(info);
+          console.log(`[ALERT SENT] Email sent to ${email} for incident ${incident.id}.`);
+          
+          // Log dispatch to database for UI
+          await prisma.notificationLog.create({
+            data: {
+              channel: 'Email',
+              recipient: email,
+              status: 'Delivered',
+              incidentId: incident.id,
+              type: incident.type
+            }
+          });
+        } catch (mailErr) {
+          console.error(`[ALERT FAILED] Could not send email to ${email}:`, mailErr);
+          await prisma.notificationLog.create({
+            data: {
+              channel: 'Email',
+              recipient: email,
+              status: 'Failed',
+              incidentId: incident.id,
+              type: incident.type
+            }
+          });
+        }
+      }
 
-      // PHASE 2: Dispatch real-time JSON Webhook (Include Email Link for Demo)
+      // PHASE 2: Dispatch real-time JSON Webhook (Generic notification)
       await webhookService.dispatch({
         ...incident,
         incidentId: incident.id,
-        emailPreviewUrl: etherealUrl || '',
         timestamp: new Date().toISOString(),
         url: `http://localhost:5175/incidents/${incident.id}`
       });
       
     } catch (err) {
-      console.error('Error sending alert email', err);
+      console.error('Error in alert dispatch loop', err);
     }
   }
 }

@@ -7,6 +7,7 @@ import incidentRoutes from './routes/incidentRoutes';
 import authRoutes from './routes/authRoutes';
 import settingsRoutes from './routes/settingsRoutes';
 import webhookRoutes from './routes/webhookRoutes';
+import alertRoutes from './routes/alertRoutes';
 import { detectionEngine } from './services/detectionEngine';
 
 dotenv.config();
@@ -28,6 +29,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/incidents', incidentRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/webhooks', webhookRoutes);
+app.use('/api/alerts', alertRoutes);
 
 // Health Check
 app.get('/health', (req, res) => {

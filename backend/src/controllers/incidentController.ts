@@ -117,16 +117,15 @@ export const getIncidents = asyncHandler(async (req: Request, res: Response) => 
   const limitNum = Math.min(200, Math.max(1, parseInt(limit, 10)));
   const skip = (pageNum - 1) * limitNum;
 
-  const where: Prisma.IncidentWhereInput = {
-    ...(status && { status: status as Status }),
-    ...(severity && { severity: severity as Severity }),
-    ...(search && {
-      OR: [
-        { entityName: { contains: search, mode: 'insensitive' } },
-        { description: { contains: search, mode: 'insensitive' } },
-      ],
-    }),
-  };
+  const where: Prisma.IncidentWhereInput = {};
+  if (status) where.status = status as Status;
+  if (severity) where.severity = severity as Severity;
+  if (search) {
+    where.OR = [
+      { entityName: { contains: search, mode: 'insensitive' } },
+      { description: { contains: search, mode: 'insensitive' } },
+    ];
+  }
 
   const validSortFields = ['createdAt', 'updatedAt', 'status', 'severity', 'entityName'];
   const orderByField = validSortFields.includes(sortBy) ? sortBy : 'createdAt';
@@ -154,7 +153,13 @@ export const getIncidentById = asyncHandler(async (req: Request, res: Response) 
 
   const incident = await prisma.incident.findUnique({
     where: { id },
-    include: { user: { select: { id: true, name: true, email: true } } },
+    include: { 
+      user: { select: { id: true, name: true, email: true } },
+      logs: {
+        orderBy: { timestamp: 'desc' }
+      },
+      children: true
+    },
   });
 
   if (!incident) return res.status(404).json({ error: 'Incident not found' });
@@ -326,7 +331,7 @@ export const getIncidentInsights = asyncHandler(async (req: Request, res: Respon
 // PATCH /incidents/:id/status
 export const updateIncidentStatus = asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.params;
-  const { status } = req.body;
+  const { status } = req.body || {};
 
   const VALID_STATUSES = ['OPEN', 'ACKNOWLEDGED', 'INVESTIGATING', 'RESOLVED', 'CLOSED'];
   if (!VALID_STATUSES.includes(status)) {
@@ -345,7 +350,7 @@ export const updateIncidentStatus = asyncHandler(async (req: Request, res: Respo
 // POST /incidents/:id/remediate
 export const remediateIncident = asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.params;
-  const { action = 'RESTART_PIPELINE', payload = {} } = req.body as RemediationAction & { payload?: Record<string, unknown> };
+  const { action = 'RESTART_PIPELINE', payload = {} } = (req.body || {}) as RemediationAction & { payload?: Record<string, unknown> };
 
   const incident = await prisma.incident.findUnique({ where: { id } });
   if (!incident) return res.status(404).json({ error: 'Incident not found' });
@@ -400,13 +405,21 @@ export const remediateIncident = asyncHandler(async (req: Request, res: Response
     data: { status: 'INVESTIGATING' },
   });
 
+  // Log remediation action for timeline
+  await prisma.incidentLog.create({
+    data: {
+      incidentId: id,
+      message: `Automated recovery initiated: ${action}. ${message}`
+    }
+  });
+
   return res.json({ success: true, incident: updated, action, message });
 });
 
 // POST /incidents/:id/assign
 export const assignOwner = asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.params;
-  const { userId, userName } = req.body;
+  const { userId, userName } = req.body || {};
 
   if (!userId || !userName) {
     return res.status(400).json({ error: 'userId and userName are required' });
@@ -417,9 +430,16 @@ export const assignOwner = asyncHandler(async (req: Request, res: Response) => {
 
   // Push ownership to OpenMetadata + update local state concurrently
   const [updated] = await Promise.all([
-    prisma.incident.update({ where: { id }, data: { status: 'ACKNOWLEDGED' } }),
+    prisma.incident.update({ where: { id }, data: { status: 'ACKNOWLEDGED', owner: userName } }),
     omService.updateTableOwner(incident.entityId, userId, userName),
   ]);
+
+  await prisma.incidentLog.create({
+    data: {
+      incidentId: id,
+      message: `Incident ownership assigned to ${userName}`
+    }
+  });
 
   return res.json({ success: true, incident: updated });
 });
@@ -444,8 +464,40 @@ export const simulateCheck = asyncHandler(async (req: Request, res: Response) =>
   });
 });
 
-  return res.json({ success: true, incident: updated, message: 'Simulated fix applied. Health score recovered.' });
+// POST /incidents/:id/simulate-fix
+export const simulateFix = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = req.params;
+
+  const incident = await prisma.incident.findUnique({ where: { id } });
+  if (!incident) return res.status(404).json({ error: 'Incident not found' });
+
+  // For Demo: If this is a DQ failure, apply the global healthy state to mocks
+  if (omService.applySimulatedFix) {
+    omService.applySimulatedFix();
+  }
+
+  const updated = await prisma.incident.update({
+    where: { id },
+    data: { 
+      status: 'RESOLVED',
+      resolvedAt: new Date()
+    }
+  });
+
+  await prisma.incidentLog.create({
+    data: {
+      incidentId: id,
+      message: '[SIMULATION] Manual fix injected. Healthy state restored.'
+    }
+  });
+
+  return res.json({ 
+    success: true, 
+    incident: updated, 
+    message: `Simulation: ${incident.entityName} has been restored to a healthy state.` 
+  });
 });
+
 
 // POST /incidents/simulate-fix (Global)
 export const simulateGlobalFix = asyncHandler(async (_req: Request, res: Response) => {
@@ -472,16 +524,16 @@ export const getMetrics = asyncHandler(async (_req: Request, res: Response) => {
     prisma.incident.count({ where: { status: 'INVESTIGATING' } }),
   ]);
 
-  // Naive MTTR: average time from createdAt to updatedAt for resolved incidents
+  // Naive MTTR: average time from createdAt to resolvedAt for resolved incidents
   const resolvedIncidents = await prisma.incident.findMany({
-    where: { status: 'RESOLVED' },
-    select: { createdAt: true, updatedAt: true },
+    where: { status: 'RESOLVED', NOT: { resolvedAt: null } },
+    select: { createdAt: true, resolvedAt: true },
   });
 
   let mttrMs = 0;
   if (resolvedIncidents.length) {
     const totalMs = resolvedIncidents.reduce(
-      (acc, i) => acc + (i.updatedAt.getTime() - i.createdAt.getTime()),
+      (acc, i) => acc + (i.resolvedAt!.getTime() - i.createdAt.getTime()),
       0,
     );
     mttrMs = totalMs / resolvedIncidents.length;
@@ -528,7 +580,7 @@ export const getTrends = asyncHandler(async (req: Request, res: Response) => {
 // POST /incidents/:id/logs
 export const addIncidentLog = asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.params;
-  const { message, level = 'INFO', userId } = req.body;
+  const { message, level = 'INFO', userId } = req.body || {};
 
   if (!message) return res.status(400).json({ error: 'message is required' });
 
@@ -546,3 +598,5 @@ export const addIncidentLog = asyncHandler(async (req: Request, res: Response) =
   console.log(`[LOG] incident=${id} — ${message}`);
   return res.json({ success: true, log });
 });
+
+

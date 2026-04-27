@@ -61,6 +61,8 @@ model Incident {
   acknowledgedAt DateTime?
   rootCause      String?
   parentId       String?
+  parent         Incident?    @relation("IncidentHierarchy", fields: [parentId], references: [id])
+  children       Incident[]   @relation("IncidentHierarchy")
   logs           IncidentLog[]
   userId         String?
   user           User?        @relation(fields: [userId], references: [id])
@@ -97,4 +99,13 @@ model HealthHistory {
   timestamp DateTime @default(now())
 
   @@index([fqn])
+}
+model NotificationLog {
+  id         String   @id @default(uuid())
+  channel    String   // 'Email', 'Slack', etc.
+  recipient  String
+  status     String   // 'Delivered', 'Failed', 'Pending'
+  time       DateTime @default(now())
+  incidentId String
+  type       String   // 'DQ_FAILURE', etc.
 }

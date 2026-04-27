@@ -22,12 +22,19 @@ export const airflowService = {
       }
 
       const url = user.airflowUrl.replace(/\/$/, '');
-      const auth = Buffer.from(`${user.airflowUser}:${user.airflowPass}`).toString('base64');
+      
+      let authHeader = '';
+      if (user.airflowPass.startsWith('ey') || !user.airflowUser || user.airflowUser === 'token') {
+        authHeader = `Bearer ${user.airflowPass}`;
+      } else {
+        const auth = Buffer.from(`${user.airflowUser}:${user.airflowPass}`).toString('base64');
+        authHeader = `Basic ${auth}`;
+      }
 
       const response = await axios.post(
         `${url}/api/v1/dags/${dagId}/dagRuns`,
         {},
-        { headers: { Authorization: `Basic ${auth}`, 'Content-Type': 'application/json' } }
+        { headers: { Authorization: authHeader, 'Content-Type': 'application/json' } }
       );
 
       return { status: 'success', data: response.data };

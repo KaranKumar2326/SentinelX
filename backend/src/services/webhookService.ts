@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { prisma } from './prisma';
 
 export interface WebhookPayload {
   incidentId: string;
@@ -37,9 +38,29 @@ export class WebhookService {
         headers: { 'Content-Type': 'application/json' },
         timeout: 5000
       });
+
+      // Log dispatch to database for UI
+      await prisma.notificationLog.create({
+        data: {
+          channel: 'Slack',
+          recipient: this.defaultWebhookUrl.split('/').pop() || 'Slack Channel',
+          status: 'Delivered',
+          incidentId: payload.incidentId,
+          type: payload.type
+        }
+      });
       console.log(`[WEBHOOK SUCCESS] Alert delivered for ${payload.incidentId}.`);
     } catch (error: any) {
       console.error(`[WEBHOOK ERROR] Failed to dispatch alert: ${error.message}`);
+      await prisma.notificationLog.create({
+        data: {
+          channel: 'Slack',
+          recipient: 'Slack Channel',
+          status: 'Failed',
+          incidentId: payload.incidentId,
+          type: payload.type
+        }
+      });
     }
   }
 }
